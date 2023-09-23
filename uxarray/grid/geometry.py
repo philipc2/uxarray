@@ -202,6 +202,94 @@ def _grid_to_polygon_geodataframe(grid, correct_antimeridian_polygons=True):
     return gdf
 
 
+def _grid_to_hvTriMesh(grid, dataarray, correct_antimeridian_polygons=True):
+    """Constructs and returns a ``spatialpandas.GeoDataFrame``"""
+    
+    import cartopy.crs as ccrs
+    
+    central_longitude = 0.0
+    n_workers = 1
+
+    # Get triangle indices for each vertex in the MPAS file. Note, indexing in MPAS starts from 1, not zero :-(
+    #
+    tris = grid.Mesh2_node_faces.values
+
+    # The MPAS connectivity array unforunately does not seem to guarantee consistent clockwise winding order, which
+    # is required by Datashader (and Matplotlib)
+    #
+    tris = _order_CCW(grid.Mesh2_face_x, grid.Mesh2_face_y, tris)
+
+    # Lastly, we need to "unzip" the mesh along a constant line of longitude so that when we project to PCS coordinates
+    # cells don't wrap around from east to west. The function below does the job, but it assumes that the 
+    # central_longitude from the map projection is 0.0. I.e. it will cut the mesh where longitude 
+    # wraps around from -180.0 to 180.0. We'll need to generalize this
+    #
+    tris = _unzip_mesh(grid.Mesh2_face_x, tris, 90.0)
+    
+    # Project verts from geographic to PCS coordinates
+    #
+    projection = ccrs.Robinson(central_longitude=central_longitude)
+    xPCS, yPCS, _ = projection.transform_points(ccrs.PlateCarree(), grid.Mesh2_face_x, grid.Mesh2_face_y).T
+
+    # print(xPCS.shape)
+    # print(yPCS.shape)
+    # print(tris.shape)
+    # print(dataarray.shape)
+    trimesh = _create_hvTriMesh(xPCS, yPCS, tris, dataarray, n_workers=n_workers)
+    
+    return trimesh
+    
+
+def _create_hvTriMesh(x, y, triangle_indices, var, n_workers=1):
+    # Create a Holoviews Triangle Mesh suitable for rendering with Datashader
+    #
+    # This function returns a Holoviews TriMesh that is created from a list of coordinates, 'x' and 'y',
+    # an array of triangle indices that addressess the coordinates in 'x' and 'y', and a data variable 'var'. The
+    # data variable's values will annotate the triangle vertices
+    
+
+    import pandas as pd
+
+    # Declare verts array
+    verts = np.column_stack([x, y, var])
+
+
+    # Convert to pandas
+    verts_df  = pd.DataFrame(verts,  columns=['x', 'y', 'z'])
+    tris_df   = pd.DataFrame(triangle_indices, columns=['v0', 'v1', 'v2'])
+
+    # Convert to dask
+    verts_ddf = dd.from_pandas(verts_df, npartitions=n_workers)
+    tris_ddf = dd.from_pandas(tris_df, npartitions=n_workers)
+
+    # Declare HoloViews element
+    tri_nodes = hv.Nodes(verts_ddf, ['x', 'y', 'index'], ['z'])
+    trimesh = hv.TriMesh((tris_ddf, tri_nodes))
+    
+    return(trimesh)
+    
+def _order_CCW(x,y,tris):
+    # Reorder triangles as necessary so they all have counter clockwise winding order. CCW is what Datashader and MPL
+    # require.
+
+    tris[triArea(x,y,tris)<0.0,:] = tris[triArea(x,y,tris)<0.0,::-1]
+    return(tris)
+
+
+def triArea(x,y,tris):
+    # Compute the signed area of a triangle
+
+    return ((x[tris[:,1]]-x[tris[:,0]]) * (y[tris[:,2]]-y[tris[:,0]])) - ((x[tris[:,2]]-x[tris[:,0]]) * (y[tris[:,1]]-y[tris[:,0]]))
+
+def _unzip_mesh(x,tris,t):
+    # This funtion splits a global mesh along longitude
+    #
+    # Examine the X coordinates of each triangle in 'tris'. Return an array of 'tris' where only those triangles
+    # with legs whose length is less than 't' are returned. 
+    
+    return tris[(np.abs((x[tris[:,0]])-(x[tris[:,1]])) < t) & (np.abs((x[tris[:,0]])-(x[tris[:,2]])) < t)]
+
+
 def _grid_to_matplotlib_polycollection(grid):
     """Constructs and returns a ``matplotlib.collections.PolyCollection``"""
 

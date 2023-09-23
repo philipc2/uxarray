@@ -27,6 +27,7 @@ from uxarray.grid.coordinates import (_populate_lonlat_coord,
 
 from uxarray.grid.geometry import (_build_antimeridian_face_indices,
                                    _grid_to_polygon_geodataframe,
+                                   _grid_to_hvTriMesh,
                                    _grid_to_matplotlib_polycollection,
                                    _grid_to_matplotlib_linecollection,
                                    _grid_to_polygons)
@@ -113,6 +114,7 @@ class Grid:
 
         # initialize cached data structures (visualization)
         self._gdf = None
+        self._hvTriMesh = None
         self._poly_collection = None
         self._line_collection = None
 
@@ -689,6 +691,43 @@ class Grid:
             self._gdf = gdf
 
         return gdf
+
+    def to_hvTriMesh(self,
+                     dataarray,
+                     override: Optional[bool] = False,
+                     cache: Optional[bool] = True,
+                     correct_antimeridian_polygons: Optional[bool] = True):
+        """Constructs a ``holoviews.element.graphs.TriMesh`` representing the 
+        geometry of the unstructured grid to be used by Holoviews tools. Additionally, any
+        polygon that crosses the antimeridian is split into MultiPolygons.
+
+        Parameters
+        ----------
+        override : bool
+            Flag to recompute the ``GeoDataFrame`` if one is already cached
+        cache : bool
+            Flag to indicate if the computed ``GeoDataFrame`` should be cached
+        correct_antimeridian_polygons: bool, Optional
+            Parameter to select whether to correct and split antimeridian polygons
+
+        Returns
+        -------
+        hvTriMesh : holoviews.element.graphs.TriMesh
+            The output `TriMesh`
+        """
+
+        # use cached geodataframe
+        if self._hvTriMesh is not None and not override:
+            return self._hvTriMesh
+
+        # construct a geodataframe with the faces stored as polygons as the geometry
+        hvTriMesh = _grid_to_hvTriMesh(self, dataarray, correct_antimeridian_polygons)
+
+        # cache computed geodataframe
+        if cache:
+            self._hvTriMesh = hvTriMesh
+
+        return hvTriMesh
 
     def to_polycollection(self,
                           override: Optional[bool] = False,
