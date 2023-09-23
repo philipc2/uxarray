@@ -246,8 +246,9 @@ def _create_hvTriMesh(x, y, triangle_indices, var, n_workers=1):
     # This function returns a Holoviews TriMesh that is created from a list of coordinates, 'x' and 'y',
     # an array of triangle indices that addressess the coordinates in 'x' and 'y', and a data variable 'var'. The
     # data variable's values will annotate the triangle vertices
-    
 
+    import dask.dataframe as dd
+    import holoviews as hv
     import pandas as pd
 
     # Declare verts array
@@ -266,7 +267,7 @@ def _create_hvTriMesh(x, y, triangle_indices, var, n_workers=1):
     tri_nodes = hv.Nodes(verts_ddf, ['x', 'y', 'index'], ['z'])
     trimesh = hv.TriMesh((tris_ddf, tri_nodes))
     
-    return(trimesh)
+    return trimesh
     
 def _order_CCW(x,y,tris):
     # Reorder triangles as necessary so they all have counter clockwise winding order. CCW is what Datashader and MPL
