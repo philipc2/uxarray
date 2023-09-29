@@ -83,7 +83,6 @@ def open_grid(grid_filename_or_obj: Union[str, os.PathLike, xr.DataArray,
             uxgrid = Grid.from_dataset(grid_ds, use_dual=use_dual)
         except ValueError:
             raise ValueError("Inputted grid_filename_or_obj not supported.")
-
     return uxgrid
 
 

@@ -220,8 +220,8 @@ def _grid_to_hvTriMesh(grid, dataarray, correct_antimeridian_polygons=True):
     tris = _order_CCW(grid.Mesh2_face_x, grid.Mesh2_face_y, tris)
 
     # Lastly, we need to "unzip" the mesh along a constant line of longitude so that when we project to PCS coordinates
-    # cells don't wrap around from east to west. The function below does the job, but it assumes that the 
-    # central_longitude from the map projection is 0.0. I.e. it will cut the mesh where longitude 
+    # cells don't wrap around from east to west. The function below does the job, but it assumes that the
+    # central_longitude from the map projection is 0.0. I.e. it will cut the mesh where longitude
     # wraps around from -180.0 to 180.0. We'll need to generalize this
     #
     tris = _unzip_mesh(grid.Mesh2_face_x, tris, 90.0)
@@ -231,10 +231,6 @@ def _grid_to_hvTriMesh(grid, dataarray, correct_antimeridian_polygons=True):
     projection = ccrs.Robinson(central_longitude=central_longitude)
     xPCS, yPCS, _ = projection.transform_points(ccrs.PlateCarree(), grid.Mesh2_face_x, grid.Mesh2_face_y).T
 
-    # print(xPCS.shape)
-    # print(yPCS.shape)
-    # print(tris.shape)
-    # print(dataarray.shape)
     trimesh = _create_hvTriMesh(xPCS, yPCS, tris, dataarray, n_workers=n_workers)
     
     return trimesh
@@ -253,7 +249,6 @@ def _create_hvTriMesh(x, y, triangle_indices, var, n_workers=1):
 
     # Declare verts array
     verts = np.column_stack([x, y, var])
-
 
     # Convert to pandas
     verts_df  = pd.DataFrame(verts,  columns=['x', 'y', 'z'])
@@ -280,15 +275,27 @@ def _order_CCW(x,y,tris):
 def triArea(x,y,tris):
     # Compute the signed area of a triangle
 
-    return ((x[tris[:,1]]-x[tris[:,0]]) * (y[tris[:,2]]-y[tris[:,0]])) - ((x[tris[:,2]]-x[tris[:,0]]) * (y[tris[:,1]]-y[tris[:,0]]))
+    areas = np.full(tris.shape[0], -1, dtype=np.float32)
+
+    tris_mask = np.all(tris >= 0, axis=1)
+
+    areas[tris_mask] = (((x[tris[tris_mask][:,1]]-x[tris[tris_mask][:,0]]) *
+                            (y[tris[tris_mask][:,2]]-y[tris[tris_mask][:,0]])) -
+                          ((x[tris[tris_mask][:,2]]-x[tris[tris_mask][:,0]]) *
+                            (y[tris[tris_mask][:,1]]-y[tris[tris_mask][:,0]])))
+
+    return areas
 
 def _unzip_mesh(x,tris,t):
     # This funtion splits a global mesh along longitude
     #
     # Examine the X coordinates of each triangle in 'tris'. Return an array of 'tris' where only those triangles
-    # with legs whose length is less than 't' are returned. 
-    
-    return tris[(np.abs((x[tris[:,0]])-(x[tris[:,1]])) < t) & (np.abs((x[tris[:,0]])-(x[tris[:,2]])) < t)]
+    # with legs whose length is less than 't' are returned.
+
+    tris_mask = np.all(tris >= 0, axis=1)
+
+    return tris[tris_mask][(np.abs((x[tris[tris_mask][:, 0]]) - (x[tris[tris_mask][:, 1]])) < t) & (
+            np.abs((x[tris[tris_mask][:, 0]]) - (x[tris[tris_mask][:, 2]])) < t)]
 
 
 def _grid_to_matplotlib_polycollection(grid):
