@@ -5,6 +5,9 @@ from scipy import sparse
 
 from uxarray.constants import INT_DTYPE, INT_FILL_VALUE
 
+from numba import njit, config
+from uxarray.constants import ENABLE_JIT_CACHE
+
 
 def close_face_nodes(Mesh2_face_nodes, nMesh2_face, nMaxMesh2_face_nodes):
     """Closes (``Mesh2_face_nodes``) by inserting the first node index after
@@ -133,6 +136,60 @@ def _build_nNodes_per_face(grid):
         data=nNodes_per_face,
         dims=["nMesh2_face"],
         attrs={"long_name": "number of non-fill value nodes for each face"})
+
+
+def _populate_edge_face_connectivity(grid, repopulate=False):
+    """Populates ``Mesh2_edge_face`` connectivity, which is a mapping of each
+    face that saddles a given edge."""
+    face_edges = grid.Mesh2_face_edges.values
+    n_nodes_per_face = grid.nNodes_per_face.values
+    n_edge = grid.nMesh2_edge
+
+    edge_faces = _build_edge_face_connectivity(face_edges, n_nodes_per_face,
+                                               n_edge)
+
+    # add Mesh2_edge_nodes to internal dataset
+    grid._ds['Mesh2_edge_faces'] = xr.DataArray(
+        edge_faces,
+        dims=["nMesh2_edge", "Two"],
+        attrs={
+            "cf_role": "edge_face_connectivity",
+            "_FillValue": INT_FILL_VALUE,
+            "long_name": "Maps the faces that saddle a given edge",
+            "start_index": INT_DTYPE(0),
+        })
+
+
+def _build_edge_face_connectivity(face_edges, n_nodes_per_face, n_edge):
+    """Helper function for constructing ``Mesh2_edge_face`` connectivity."""
+
+    edge_faces = {edge_idx: [] for edge_idx in range(n_edge)}
+
+    for face_idx, (cur_face_edges,
+                   n_edges) in enumerate(zip(face_edges, n_nodes_per_face)):
+        # obtain all the edges that make up a face (excluding fill values)
+        edges = cur_face_edges[:n_edges]
+        for edge_idx in edges:
+            # each edge is our key, append the face that its part of to it's list
+            edge_faces[edge_idx].append(face_idx)
+
+    edge_faces_list = []
+    for edge_idx, cur_edge_faces in edge_faces.items():
+        if len(cur_edge_faces) == 2:
+            # edge is saddled by two faces
+            edge_faces_list.append(cur_edge_faces)
+        else:
+            # edge is saddled by only one face
+            cur_edge_faces.append([cur_edge_faces[0], INT_FILL_VALUE])
+
+    edge_faces_array = np.array(edge_faces_list, dtype=INT_DTYPE)
+
+    return edge_faces_array
+
+
+def _build_half_edge_face_connectivity(grid):
+    # TODO
+    pass
 
 
 def _build_edge_node_connectivity(grid, repopulate=False):
