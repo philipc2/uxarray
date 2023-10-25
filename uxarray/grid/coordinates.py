@@ -109,6 +109,12 @@ def normalize_in_place(node):
     return list(np.array(node) / np.linalg.norm(np.array(node), ord=2))
 
 
+@njit(cache=ENABLE_JIT_CACHE)
+def normalize_in_place_numpy(node):
+    norm = node / np.linalg.norm(node, ord=2)
+    return norm
+
+
 def _get_xyz_from_lonlat(node_lon, node_lat):
     # check for units and create Mesh2_node_cart_x/y/z set to grid._ds
     nodes_lon_rad = np.deg2rad(node_lon)

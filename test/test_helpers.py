@@ -101,12 +101,23 @@ class TestGridCenter(TestCase):
 class TestCoordinatesConversion(TestCase):
 
     def test_normalize_in_place(self):
+        arr = np.random.rand(3)
         [x, y, z] = ux.grid.coordinates.normalize_in_place(
             [random.random(), random.random(),
              random.random()])
-
         self.assertLessEqual(np.absolute(np.sqrt(x * x + y * y + z * z) - 1),
                              err_tolerance)
+        # new test
+        print(arr, type(arr))
+        out = ux.grid.coordinates.normalize_in_place_numpy(arr)
+        x = out[0]
+        y = out[1]
+        z = out[2]
+        print(out, type(out))
+        self.assertLessEqual(np.absolute(np.sqrt(x * x + y * y + z * z) - 1),
+                             err_tolerance)
+
+        # test _populate_centroid_coord
 
     def test_node_xyz_to_lonlat_rad(self):
         [x, y, z] = ux.grid.coordinates.normalize_in_place([
@@ -114,7 +125,7 @@ class TestCoordinatesConversion(TestCase):
             random.uniform(-1, 1),
             random.uniform(-1, 1)
         ])
-
+        print(x, y, z)
         [lon, lat] = ux.grid.coordinates.node_xyz_to_lonlat_rad([x, y, z])
         [new_x, new_y,
          new_z] = ux.grid.coordinates.node_lonlat_rad_to_xyz([lon, lat])
