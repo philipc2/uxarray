@@ -45,6 +45,7 @@ python -m pip install --no-cache-dir \
     git+https://github.com/dask/distributed.git \
     git+https://github.com/aleaxit/gmpy.git \
     git+https://github.com/holoviz/holoviews.git \
+    Cmake
     git+https://github.com/numba/numba.git \
     git+https://github.com/shapely/shapely.git \
     git+https://github.com/holoviz/spatialpandas.git
