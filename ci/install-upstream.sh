@@ -37,7 +37,7 @@ python -m pip install \
     xarray
 
 # install rest from source
-python -m pip install \
+python -m pip install --no-cache-dir \
     git+https://github.com/gadomski/antimeridian.git \
     git+https://github.com/SciTools/cartopy.git \
     git+https://github.com/holoviz/datashader.git \
