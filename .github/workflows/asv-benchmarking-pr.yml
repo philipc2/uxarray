@@ -18,7 +18,7 @@ jobs:
       - name: Checkout uxarray
         uses: actions/checkout@v4
         with:
-          repository: UXARRAY/uxarray
+          repository: philipc2/uxarray
           ref: main
           fetch-depth: 0
 
@@ -52,10 +52,17 @@ jobs:
           conda info
           conda list
 
+      - name: Checkout Main Branch
+        uses: actions/checkout@v4
+        with:
+          repository: philipc2/uxarray
+          ref: main
+          path: main_repo
+          fetch-depth: 0
+
       - name: Run Benchmarks Compared to Main
-        shell: bash -l {0}
         id: benchmark
         run: |
-          cd benchmarks
+          cd ${{ env.ASV_DIR }}
           asv machine --machine GH-Actions --os ubuntu-latest --arch x64 --cpu "2-core unknown" --ram 7GB
-          asv run v2024.02.0..main --skip-existing --parallel || true
+          asv run HEAD..main_repo/main --skip-existing --parallel || true
