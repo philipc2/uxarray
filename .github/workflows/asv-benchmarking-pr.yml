@@ -67,6 +67,7 @@ jobs:
         shell: bash -l {0}
         id: benchmark
         run: |
+          cd benchmarks
           echo "Baseline:  ${{ github.event.pull_request.base.sha }} (${{ github.event.pull_request.base.label }})"
           echo "Contender: ${GITHUB_SHA} (${{ github.event.pull_request.head.label }})"
           ASV_OPTIONS="--split --show-stderr --factor 1"
