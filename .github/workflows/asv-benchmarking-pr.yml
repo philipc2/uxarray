@@ -1,4 +1,4 @@
-name: Benchmark PR 
+name: Benchmark
 
 on:
   pull_request:
@@ -10,67 +10,44 @@ jobs:
     if: ${{ contains( github.event.pull_request.labels.*.name, 'run-benchmark') && github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     name: Linux
     runs-on: ubuntu-20.04
-    defaults:
-      run:
-        shell: bash -el {0}
     env:
       ASV_DIR: "./benchmarks"
       CONDA_ENV_FILE: ci/asv.yml
 
     steps:
-      - name: Checkout uxarray
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          repository: philipc2/uxarray
-          ref: main
           fetch-depth: 0
 
-      - name: Setup Miniforge
-        uses: conda-incubator/setup-miniconda@v3
+      - name: Set up Conda environment
+        uses: mamba-org/setup-micromamba@v1
         with:
-          miniforge-version: "24.1.2-0"
-          activate-environment: asv
+          environment-file: ${{env.CONDA_ENV_FILE}}
+          cache-environment: true
+          cache-environment-key: "${{runner.os}}-${{runner.arch}}-py${{env.PYTHON_VERSION}}-${{env.TODAY}}-${{hashFiles(env.CONDA_ENV_FILE)}}-benchmark"
+          create-args: >-
+            asv
+            build
+            mamba
 
-      - name: Get date
-        id: get-date
-        run: echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
-        shell: bash
 
-      - name: Cache environment
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CONDA }}/envs
-          key: conda-${{ runner.os }}--${{ runner.arch }}--${{ steps.get-date.outputs.today }}-${{ hashFiles('./ci/asv.yml') }}-${{ env.CACHE_NUMBER }}
-        env:
-          CACHE_NUMBER: 0
-        id: cache
-
-      - name: Update environment
-        run:
-          conda env update -n asv -f ./ci/asv.yml
-        if: steps.cache.outputs.cache-hit != 'true'
-
-      - name: Conda list
-        run: |
-          conda info
-          conda list
-
-      - name: Checkout Main Branch
-        uses: actions/checkout@v4
-        with:
-          repository: philipc2/uxarray
-          ref: main
-          path: main_repo
-          fetch-depth: 0
-
-      - name: Run Benchmarks Compared to Main
+      - name: Run benchmarks
         shell: bash -l {0}
         id: benchmark
+        env:
+          OPENBLAS_NUM_THREADS: 1
+          MKL_NUM_THREADS: 1
+          OMP_NUM_THREADS: 1
+          ASV_FACTOR: 1.5
+          ASV_SKIP_SLOW: 1
         run: |
-          cd benchmarks
+          set -x
+          # ID this runner
+          asv machine --yes
           echo "Baseline:  ${{ github.event.pull_request.base.sha }} (${{ github.event.pull_request.base.label }})"
           echo "Contender: ${GITHUB_SHA} (${{ github.event.pull_request.head.label }})"
-          ASV_OPTIONS="--split --show-stderr --factor 1"
+          # Run benchmarks for current commit against base
+          ASV_OPTIONS="--split --show-stderr --factor $ASV_FACTOR"
           asv continuous $ASV_OPTIONS ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA} \
               | sed "/Traceback \|failed$\|PERFORMANCE DECREASED/ s/^/::error::/" \
               | tee benchmarks.log
@@ -78,3 +55,16 @@ jobs:
           if grep "Traceback \|failed\|PERFORMANCE DECREASED" benchmarks.log > /dev/null ; then
               exit 1
           fi
+        working-directory: ${{ env.ASV_DIR }}
+
+      # - name: Add instructions to artifact
+      #   if: always()
+      #   run: |
+      #     cp benchmarks/README_CI.md benchmarks.log .asv/results/
+      #   working-directory: ${{ env.ASV_DIR }}
+
+      # - uses: actions/upload-artifact@v4
+      #   if: always()
+      #   with:
+      #     name: asv-benchmark-results-${{ runner.os }}
+      #     path: ${{ env.ASV_DIR }}/.asv/results
