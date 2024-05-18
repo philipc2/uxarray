@@ -61,6 +61,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Benchmarks Compared to Main
+        shell: bash -l {0}
         id: benchmark
         run: |
           cd ${{ env.ASV_DIR }}
