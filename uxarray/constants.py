@@ -17,4 +17,4 @@ ENABLE_JIT = True
 
 GRID_DIMS = ["n_node", "n_edge", "n_face"]
 
-Foo = 1
+Foo = 2
