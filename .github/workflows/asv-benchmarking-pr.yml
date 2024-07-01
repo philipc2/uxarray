@@ -31,10 +31,6 @@ jobs:
             build
             mamba
 
-      - name: Install pyfma using pip
-        run: |
-          micromamba run -n uxarray_build pip install pyfma
-
       - name: Run benchmarks
         shell: bash -l {0}
         id: benchmark
