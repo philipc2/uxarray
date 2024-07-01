@@ -7,7 +7,7 @@
     "project": "uxarray",
 
     // The project's homepage
-    "project_url": "https://github.com/UXARRAY/uxarray",
+    "project_url": "https://github.com/philipc2/uxarray",
 
     // The URL or local path of the source code repository for the
     // project being benchmarked
@@ -54,7 +54,8 @@
     // If missing or the empty string, the tool will be automatically
     // determined by looking for tools on the PATH environment
     // variable.
-    "environment_type": "conda",
+    "environment_type": "mamba",
+    "conda_channels": ["conda-forge"],
 
     // timeout in seconds for installing any dependencies in environment
     // defaults to 10 min
@@ -63,18 +64,11 @@
     "benchmark_timeout": 360,
 
     // the base URL to show a commit for the project.
-    "show_commit_url": "https://github.com/UXARRAY/uxarray/commit/",
+    "show_commit_url": "https://github.com/philipc2/uxarray/commit/",
 
     // The Pythons you'd like to test against.  If not provided, defaults
     // to the current version of Python used to run `asv`.
     "pythons": ["3.11"],
-
-    // The list of conda channel names to be searched for benchmark
-    // dependency packages in the specified order
-     "conda_channels": ["conda-forge"],
-
-    // A conda environment file that is used for environment creation.
-     "conda_environment_file": "../ci/asv.yml",
 
     // The matrix of dependencies to test.  Each key of the "req"
     // requirements dictionary is the name of a package (in PyPI) and
@@ -96,9 +90,18 @@
     // new environments.  A value of ``null`` means that the variable
     // will not be set for the current combination.
     //
-    "matrix": {
-        "python": [""],
+     "matrix": {
+        "setuptools_scm": [""],
+        "xarray": [""],  
+        "netcdf4": [""],  
+        "pip+pyfma": [""],
     },
+
+
+    "build_command": [
+        "python -m build",
+        "python -mpip wheel --no-deps --no-build-isolation --no-index -w {build_cache_dir} {build_dir}"
+    ],
 
     // Combinations of libraries/python versions can be excluded/included
     // from the set to test. Each entry is a dictionary containing additional

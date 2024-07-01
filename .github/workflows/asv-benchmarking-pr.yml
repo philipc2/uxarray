@@ -1,4 +1,4 @@
-name: Benchmark PR 
+name: ASV Benchmarking (PR)
 
 on:
   pull_request:
@@ -9,60 +9,134 @@ jobs:
   benchmark:
     if: ${{ contains( github.event.pull_request.labels.*.name, 'run-benchmark') && github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     name: Linux
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       ASV_DIR: "./benchmarks"
-      CONDA_ENV_FILE: ci/asv.yml
+      CONDA_ENV_FILE: ci/environment.yml
 
     steps:
-      - name: Checkout uxarray
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          repository: philipc2/uxarray
-          ref: main
           fetch-depth: 0
 
-      - name: Setup Miniforge
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          miniforge-version: "24.1.2-0"
-          activate-environment: asv
-
-      - name: Get date
-        id: get-date
-        run: echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Cache environment
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CONDA }}/envs
-          key: conda-${{ runner.os }}--${{ runner.arch }}--${{ steps.get-date.outputs.today }}-${{ hashFiles('./ci/asv.yml') }}-${{ env.CACHE_NUMBER }}
-        env:
-          CACHE_NUMBER: 0
-        id: cache
-
-      - name: Update environment
-        run:
-          conda env update -n asv -f ./ci/asv.yml
-        if: steps.cache.outputs.cache-hit != 'true'
-
-      - name: Conda list
+      - name: Install newer libstdc++
         run: |
-          conda info
-          conda list
+          sudo apt-get update
+          sudo apt-get install -y libstdc++6
 
-      - name: Checkout Main Branch
-        uses: actions/checkout@v4
+      - name: Set up Conda environment
+        uses: mamba-org/setup-micromamba@v1
         with:
-          repository: philipc2/uxarray
-          ref: main
-          path: main_repo
-          fetch-depth: 0
+          environment-file: ${{env.CONDA_ENV_FILE}}
+          cache-environment: true
+          environment-name: uxarray_build
+          cache-environment-key: "${{runner.os}}-${{runner.arch}}-py${{env.PYTHON_VERSION}}-${{env.TODAY}}-${{hashFiles(env.CONDA_ENV_FILE)}}-benchmark"
+          create-args: >-
+            asv
+            build
+            mamba
 
-      - name: Run Benchmarks Compared to Main
+      - name: Run benchmarks
+        shell: bash -l {0}
         id: benchmark
         run: |
-          cd ${{ env.ASV_DIR }}
-          asv machine --machine GH-Actions --os ubuntu-latest --arch x64 --cpu "2-core unknown" --ram 7GB
-          asv run HEAD..main_repo/main --skip-existing --parallel || true
+          set -x
+          # ID this runner
+          asv machine --yes
+          echo "Baseline:  ${{ github.event.pull_request.base.sha }} (${{ github.event.pull_request.base.label }})"
+          echo "Contender: ${GITHUB_SHA} (${{ github.event.pull_request.head.label }})"
+          # Run benchmarks for current commit against base
+          ASV_OPTIONS="--split --show-stderr --bench quad_hexagon"
+          asv continuous $ASV_OPTIONS ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA}
+          # Save compare results
+          asv compare ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA} > asv_compare_results.txt
+        working-directory: ${{ env.ASV_DIR }}
+
+      # - name: Add instructions to artifact
+      #   if: always()
+      #   run: |
+      #     cp benchmarks/README_CI.md benchmarks.log .asv/results/
+      #   working-directory: ${{ env.ASV_DIR }}
+
+      - name: Convert results to HTML table
+        id: html_table
+        run: |
+          python3 - <<'EOF'
+          import pandas as pd
+
+          # Read the comparison results
+          with open('${{ env.ASV_DIR }}/asv_compare_results.txt', 'r') as file:
+              lines = file.readlines()
+
+          # Extract the header and data
+          header = lines[1].split('|')[1:-1]
+          data = [line.split('|')[1:-1] for line in lines[3:]]
+
+          # Create a DataFrame
+          df = pd.DataFrame(data, columns=[col.strip() for col in header])
+          
+          # Convert to HTML table
+          html_table = df.to_html(index=False)
+
+          # Save to a file
+          with open('${{ env.ASV_DIR }}/asv_compare_results.html', 'w') as file:
+              file.write(html_table)
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: asv-benchmark-results-${{ runner.os }}
+          path: |
+            ${{ env.ASV_DIR }}/results
+            ${{ env.ASV_DIR }}/asv_compare_results.txt
+
+      - name: Post or update result comment
+        id: comment
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const compareResults = fs.readFileSync('${{ env.ASV_DIR }}/asv_compare_results.html', 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+  
+            // Customize the comment content with your action results
+            const newComment = `
+            ## ASV Benchmarking
+
+            <details>
+              <summary>Benchmark Comparison Results</summary>
+  
+              ${compareResults}
+            </details>
+            `;
+  
+            // Fetch existing comments on the PR
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number,
+            });
+  
+            // Find if there is an existing comment by this action
+            const botComment = comments.find(comment => comment.user.login === 'github-actions[bot]');
+  
+            if (botComment) {
+              // Update the existing comment
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: botComment.id,
+                body: newComment,
+              });
+            } else {
+              // Create a new comment
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body: newComment,
+              });
+            }
