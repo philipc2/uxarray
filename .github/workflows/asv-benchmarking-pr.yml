@@ -31,6 +31,8 @@ jobs:
             build
             mamba
 
+      - name: Install pyfma
+        run: pip install pyfma
 
       - name: Run benchmarks
         shell: bash -l {0}
