@@ -7,7 +7,7 @@ on:
 
 jobs:
   benchmark:
-    if: ${{ contains( github.event.pull_request.labels.*.name, 'run-benchmark') && github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'run-benchmark') && github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     name: Linux
     runs-on: ubuntu-latest
     env:
@@ -31,6 +31,9 @@ jobs:
             build
             mamba
 
+      - name: Install Pandas
+        run: micromamba install -n uxarray_build pandas
+
       - name: Run benchmarks
         shell: bash -l {0}
         id: benchmark
@@ -41,22 +44,16 @@ jobs:
           echo "Baseline:  ${{ github.event.pull_request.base.sha }} (${{ github.event.pull_request.base.label }})"
           echo "Contender: ${GITHUB_SHA} (${{ github.event.pull_request.head.label }})"
           # Run benchmarks for current commit against base
-          ASV_OPTIONS="--split --show-stderr --bench quad_hexagon"
+          ASV_OPTIONS="--split --show-stderr --bench mpas_ocean"
           asv continuous $ASV_OPTIONS ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA}
           # Save compare results
           asv compare ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA} > asv_compare_results.txt
         working-directory: ${{ env.ASV_DIR }}
 
-      # - name: Add instructions to artifact
-      #   if: always()
-      #   run: |
-      #     cp benchmarks/README_CI.md benchmarks.log .asv/results/
-      #   working-directory: ${{ env.ASV_DIR }}
-
       - name: Convert results to HTML table
         id: html_table
         run: |
-          source ~/.bashrc
+          eval "$(micromamba shell hook --shell bash)"
           micromamba activate uxarray_build
           python3 - <<'EOF'
           import pandas as pd
@@ -87,6 +84,7 @@ jobs:
           path: |
             ${{ env.ASV_DIR }}/results
             ${{ env.ASV_DIR }}/asv_compare_results.txt
+            ${{ env.ASV_DIR }}/asv_compare_results.html
 
       - name: Post or update result comment
         id: comment
