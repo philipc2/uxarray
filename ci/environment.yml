@@ -1,6 +1,7 @@
 name: uxarray_build
 channels:
   - conda-forge
+  - nodefaults
 dependencies:
   - antimeridian
   - cartopy
