@@ -46,8 +46,10 @@ jobs:
           echo "Baseline:  ${{ github.event.pull_request.base.sha }} (${{ github.event.pull_request.base.label }})"
           echo "Contender: ${GITHUB_SHA} (${{ github.event.pull_request.head.label }})"
           # Run benchmarks for current commit against base
-          ASV_OPTIONS="--split --show-stderr"
+          ASV_OPTIONS="--split --show-stderr --bench quad_hexagon"
           asv continuous $ASV_OPTIONS ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA}
+          # Save compare results
+          asv compare ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA} > asv_compare_results.txt
         working-directory: ${{ env.ASV_DIR }}
 
       # - name: Add instructions to artifact
@@ -60,7 +62,9 @@ jobs:
         if: always()
         with:
           name: asv-benchmark-results-${{ runner.os }}
-          path: ${{ env.ASV_DIR }}/results
+          path: |
+            ${{ env.ASV_DIR }}/results
+            ${{ env.ASV_DIR }}/asv_compare_results.txt
 
       - name: Post or update result comment
         id: comment
@@ -68,17 +72,26 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const fs = require('fs');
+            const compareResults = fs.readFileSync('${{ env.ASV_DIR }}/asv_compare_results.txt', 'utf8');
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
   
             // Customize the comment content with your action results
             const newComment = `
             ## Action Results
-            Your action results here.
+
+            <details>
+              <summary>Benchmark Comparison Results</summary>
+  
+              \`\`\`
+              ${compareResults}
+              \`\`\`
+            </details>
             `;
   
             // Fetch existing comments on the PR
-            const { data: comments } = await github.issues.listComments({
+            const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
               issue_number,
@@ -89,7 +102,7 @@ jobs:
   
             if (botComment) {
               // Update the existing comment
-              await github.issues.updateComment({
+              await github.rest.issues.updateComment({
                 owner,
                 repo,
                 comment_id: botComment.id,
@@ -97,7 +110,7 @@ jobs:
               });
             } else {
               // Create a new comment
-              await github.issues.createComment({
+              await github.rest.issues.createComment({
                 owner,
                 repo,
                 issue_number,
