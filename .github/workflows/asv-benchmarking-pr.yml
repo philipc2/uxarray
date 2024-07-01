@@ -61,3 +61,47 @@ jobs:
         with:
           name: asv-benchmark-results-${{ runner.os }}
           path: ${{ env.ASV_DIR }}/results
+
+      - name: Post or update result comment
+        id: comment
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+  
+            // Customize the comment content with your action results
+            const newComment = `
+            ## Action Results
+            Your action results here.
+            `;
+  
+            // Fetch existing comments on the PR
+            const { data: comments } = await github.issues.listComments({
+              owner,
+              repo,
+              issue_number,
+            });
+  
+            // Find if there is an existing comment by this action
+            const botComment = comments.find(comment => comment.user.login === 'github-actions[bot]');
+  
+            if (botComment) {
+              // Update the existing comment
+              await github.issues.updateComment({
+                owner,
+                repo,
+                comment_id: botComment.id,
+                body: newComment,
+              });
+            } else {
+              // Create a new comment
+              await github.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body: newComment,
+              });
+            }
+  
