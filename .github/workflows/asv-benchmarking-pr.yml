@@ -46,7 +46,7 @@ jobs:
           echo "Baseline:  ${{ github.event.pull_request.base.sha }} (${{ github.event.pull_request.base.label }})"
           echo "Contender: ${GITHUB_SHA} (${{ github.event.pull_request.head.label }})"
           # Run benchmarks for current commit against base
-          ASV_OPTIONS="--split --show-stderr --bench mpas_ocean"
+          ASV_OPTIONS="--split --show-stderr --bench quad_hexagon"
           asv continuous $ASV_OPTIONS ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA}
           # Save compare results
           asv compare ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA} > asv_compare_results.txt
@@ -57,6 +57,31 @@ jobs:
       #   run: |
       #     cp benchmarks/README_CI.md benchmarks.log .asv/results/
       #   working-directory: ${{ env.ASV_DIR }}
+
+      - name: Convert results to HTML table
+        id: html_table
+        run: |
+          python3 - <<'EOF'
+          import pandas as pd
+
+          # Read the comparison results
+          with open('${{ env.ASV_DIR }}/asv_compare_results.txt', 'r') as file:
+              lines = file.readlines()
+
+          # Extract the header and data
+          header = lines[1].split('|')[1:-1]
+          data = [line.split('|')[1:-1] for line in lines[3:]]
+
+          # Create a DataFrame
+          df = pd.DataFrame(data, columns=[col.strip() for col in header])
+          
+          # Convert to HTML table
+          html_table = df.to_html(index=False)
+
+          # Save to a file
+          with open('${{ env.ASV_DIR }}/asv_compare_results.html', 'w') as file:
+              file.write(html_table)
+          EOF
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -73,7 +98,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const compareResults = fs.readFileSync('${{ env.ASV_DIR }}/asv_compare_results.txt', 'utf8');
+            const compareResults = fs.readFileSync('${{ env.ASV_DIR }}/asv_compare_results.html', 'utf8');
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
   
@@ -84,9 +109,7 @@ jobs:
             <details>
               <summary>Benchmark Comparison Results</summary>
   
-              \`\`\`
               ${compareResults}
-              \`\`\`
             </details>
             `;
   
@@ -117,4 +140,3 @@ jobs:
                 body: newComment,
               });
             }
-  
