@@ -14,6 +14,10 @@ class QuadHexagon:
         """Time to open a `Grid`"""
         ux.open_grid(grid_path)
 
+    def time_open_grid_two(self):
+        """Time to open a `Grid`"""
+        ux.open_grid(grid_path)
+
     def mem_open_grid(self):
         """Memory Occupied by a `Grid`"""
         return ux.open_grid(grid_path)
