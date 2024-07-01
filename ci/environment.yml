@@ -25,6 +25,5 @@ dependencies:
   - shapely
   - spatialpandas
   - xarray
-  - pip
   - pip:
     - pyfma
