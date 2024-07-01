@@ -2,6 +2,7 @@ name: uxarray_build
 channels:
   - conda-forge
 dependencies:
+  - antimeridian
   - cartopy
   - dask
   - datashader
@@ -25,5 +26,4 @@ dependencies:
   - spatialpandas
   - xarray
   - pip:
-    - antimeridian
     - pyfma
