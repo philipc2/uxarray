@@ -92,7 +92,6 @@
     //
      "matrix": {
         "setuptools_scm": [""],
-         "netcdf4": [""],
          "pip+pyfma": [""],  
     },
 
