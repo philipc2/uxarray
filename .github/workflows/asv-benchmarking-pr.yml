@@ -52,14 +52,14 @@ jobs:
           asv continuous $ASV_OPTIONS ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA}
         working-directory: ${{ env.ASV_DIR }}
 
-      - name: Add instructions to artifact
-        if: always()
-        run: |
-          cp benchmarks/README_CI.md benchmarks.log .asv/results/
-        working-directory: ${{ env.ASV_DIR }}
+      # - name: Add instructions to artifact
+      #   if: always()
+      #   run: |
+      #     cp benchmarks/README_CI.md benchmarks.log .asv/results/
+      #   working-directory: ${{ env.ASV_DIR }}
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: asv-benchmark-results-${{ runner.os }}
-          path: ${{ env.ASV_DIR }}/.asv/results
+          path: ${{ env.ASV_DIR }}/results
