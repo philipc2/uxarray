@@ -92,7 +92,7 @@
     //
      "matrix": {
         "setuptools_scm": [""],  
-         "pyfma": [""],  
+         "pip+pyfma": [""],  
     },
 
 
