@@ -23,7 +23,7 @@ jobs:
         uses: mamba-org/setup-micromamba@v1
         with:
           environment-file: ${{env.CONDA_ENV_FILE}}
-          cache-environment: false
+          cache-environment: true
           environment-name: uxarray_build
           cache-environment-key: "${{runner.os}}-${{runner.arch}}-py${{env.PYTHON_VERSION}}-${{env.TODAY}}-${{hashFiles(env.CONDA_ENV_FILE)}}-benchmark"
           create-args: >-
