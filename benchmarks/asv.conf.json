@@ -94,7 +94,8 @@
         "setuptools_scm": [""],
         "xarray": [""],  
         "netcdf4": [""],  
-        "pip+pyfma": [""],  
+        "gcc": [""],  
+        "pip+pyfma": [""],
     },
 
 
