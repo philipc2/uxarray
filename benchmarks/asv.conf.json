@@ -103,6 +103,11 @@
         "python -mpip wheel --no-deps --no-build-isolation --no-index -w {build_cache_dir} {build_dir}"
     ],
 
+    "install_command": [
+        "in-dir={env_dir} python -mpip install asv<0.62",
+        "in-dir={env_dir} python -mpip install {wheel_file}"
+    ],
+
     // Combinations of libraries/python versions can be excluded/included
     // from the set to test. Each entry is a dictionary containing additional
     // key-value pairs to include/exclude.
