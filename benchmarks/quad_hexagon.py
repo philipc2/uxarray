@@ -15,9 +15,9 @@ class QuadHexagon:
         ux.open_grid(grid_path)
 
 
-    def time_open_grid_two(self):
+    def time_access_foo(self):
         """Time to open a `Grid`"""
-        ux.open_grid(grid_path)
+        ux.constants.Foo
 
     # dytpe issues with pympler
     # def mem_open_grid(self):
