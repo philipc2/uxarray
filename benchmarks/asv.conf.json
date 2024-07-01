@@ -90,8 +90,9 @@
     // new environments.  A value of ``null`` means that the variable
     // will not be set for the current combination.
     //
-    "matrix": {
-        "python": [""],
+     "matrix": {
+        "setuptools_scm": [""],  
+         "pyfma": [""],  
     },
 
 
