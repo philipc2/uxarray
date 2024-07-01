@@ -1,4 +1,4 @@
-name: Benchmark
+name: ASV Benchmarking (PR)
 
 on:
   pull_request:
@@ -79,7 +79,7 @@ jobs:
   
             // Customize the comment content with your action results
             const newComment = `
-            ## Action Results
+            ## ASV Benchmarking
 
             <details>
               <summary>Benchmark Comparison Results</summary>
