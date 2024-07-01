@@ -19,6 +19,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install newer libstdc++
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libstdc++6
+
       - name: Set up Conda environment
         uses: mamba-org/setup-micromamba@v1
         with:
@@ -62,13 +67,24 @@ jobs:
           with open('${{ env.ASV_DIR }}/asv_compare_results.txt', 'r') as file:
               lines = file.readlines()
 
+          # Debug: Print the lines read
+          for i, line in enumerate(lines):
+              print(f"Line {i}: {line}")
+
           # Extract the header and data
-          header = lines[1].split('|')[1:-1]
-          data = [line.split('|')[1:-1] for line in lines[3:]]
+          header = lines[1].strip().split('|')[1:-1]
+          data = [line.strip().split('|')[1:-1] for line in lines[3:] if '|' in line]
+
+          # Debug: Print extracted header and data
+          print("Header:", header)
+          print("Data:", data)
 
           # Create a DataFrame
           df = pd.DataFrame(data, columns=[col.strip() for col in header])
-          
+
+          # Debug: Print the DataFrame
+          print("DataFrame:", df)
+
           # Convert to HTML table
           html_table = df.to_html(index=False)
 
