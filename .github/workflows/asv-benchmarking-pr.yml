@@ -19,7 +19,6 @@ jobs:
         with:
           fetch-depth: 0
 
-
       - name: Set up Conda environment
         uses: mamba-org/setup-micromamba@v1
         with:
@@ -43,7 +42,7 @@ jobs:
           echo "Contender: ${GITHUB_SHA} (${{ github.event.pull_request.head.label }})"
           # Run benchmarks for current commit against base
           ASV_OPTIONS="--split --show-stderr --bench quad_hexagon"
-          asv continuous $ASV_OPTIONS ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA} > asv_continuous_results.txt
+          asv continuous $ASV_OPTIONS ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA}
           # Save compare results
           asv compare --split ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA} > asv_compare_results.txt
         working-directory: ${{ env.ASV_DIR }}
@@ -63,13 +62,19 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            awk -F '|' '{OFS="|"; $1=""; print $0}' asv_compare_results.txt > asv_compare_results_nochange.txt
-            const compareResults = fs.readFileSync('${{ env.ASV_DIR }}/asv_compare_results_nochange.txt', 'utf8');
-            const continuousResults = fs.readFileSync('${{ env.ASV_DIR }}/asv_continuous_results.txt', 'utf8');
-            
+            const filePath = '${{ env.ASV_DIR }}/asv_compare_results.txt';
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            const modifiedContent = fileContent
+              .split('\n')
+              .map(line => line.split('|').slice(0, -1).join('|'))
+              .join('\n');
+            fs.writeFileSync(filePath.replace('.txt', '_nochange.txt'), modifiedContent);
+
+            const compareResults = fs.readFileSync(filePath.replace('.txt', '_nochange.txt'), 'utf8');
+
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
-  
+
             // Customize the comment content with your action results
             const newComment = `
             ## ASV Benchmarking
@@ -80,17 +85,17 @@ jobs:
               ${compareResults}
             </details>
             `;
-  
+
             // Fetch existing comments on the PR
             const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
               issue_number,
             });
-  
+
             // Find if there is an existing comment by this action
             const botComment = comments.find(comment => comment.user.login === 'github-actions[bot]');
-  
+
             if (botComment) {
               // Update the existing comment
               await github.rest.issues.updateComment({
