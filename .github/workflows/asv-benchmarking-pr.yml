@@ -64,6 +64,7 @@ jobs:
           script: |
             const fs = require('fs');
             const compareResults = fs.readFileSync('${{ env.ASV_DIR }}/asv_compare_results.txt', 'utf8');
+            const continuousResults = fs.readFileSync('${{ env.ASV_DIR }}/asv_continuous_results.txt', 'utf8');
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
   
@@ -75,6 +76,11 @@ jobs:
               <summary>Benchmark Comparison Results</summary>
   
               ${compareResults}
+            </details>
+            <details>
+              <summary>Continuous Run Results</summary>
+  
+              ${continuousResults}
             </details>
             `;
   
