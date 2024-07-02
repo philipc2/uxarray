@@ -63,8 +63,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const compareResults = fs.readFileSync('${{ env.ASV_DIR }}/asv_compare_results.txt', 'utf8');
+            awk -F '|' '{OFS="|"; $1=""; print $0}' asv_compare_results.txt > asv_compare_results_nochange.txt
+            const compareResults = fs.readFileSync('${{ env.ASV_DIR }}/asv_compare_results_nochange.txt', 'utf8');
             const continuousResults = fs.readFileSync('${{ env.ASV_DIR }}/asv_continuous_results.txt', 'utf8');
+            
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
   
