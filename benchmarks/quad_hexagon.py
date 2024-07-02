@@ -14,10 +14,16 @@ class QuadHexagon:
         """Time to open a `Grid`"""
         ux.open_grid(grid_path)
 
+
+    def time_access_foo(self):
+        """Time to open a `Grid`"""
+        ux.constants.Foo
+
     # dytpe issues with pympler
     # def mem_open_grid(self):
     #     """Memory Occupied by a `Grid`"""
     #     return ux.open_grid(grid_path)
+
 
     def peakmem_open_grid(self):
         """Peak memory usage of a `Grid`"""
