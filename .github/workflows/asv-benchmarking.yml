@@ -6,42 +6,27 @@ on:
       - main
   workflow_dispatch:
 
-
 jobs:
   benchmark:
-    name: Linux
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
     env:
-      ASV_DIR: "./benchmarks"
-      CONDA_ENV_FILE: ci/environment.yml
+      CONDA_ENV_FILE: ./ci/asv.yml
+      ASV_DIR: ./benchmarks
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout uxarray
+        uses: actions/checkout@v4
         with:
+          repository: UXARRAY/uxarray
+          ref: main
           fetch-depth: 0
 
-      - name: Set up Conda environment
-        uses: mamba-org/setup-micromamba@v1
-        with:
-          environment-file: ${{env.CONDA_ENV_FILE}}
-          cache-environment: true
-          environment-name: uxarray_build
-          cache-environment-key: "${{runner.os}}-${{runner.arch}}-py${{env.PYTHON_VERSION}}-${{env.TODAY}}-${{hashFiles(env.CONDA_ENV_FILE)}}-benchmark"
-          create-args: >-
-            asv
-            build
-            mamba
-
-      # - name: Checkout uxarray
-      #   uses: actions/checkout@v4
-      #   with:
-      #     repository: UXARRAY/uxarray
-      #     ref: main
-      #     fetch-depth: 0
-
-      # - name: Fetch all tags and branches for uxarray
-      #   run: |
-      #     git fetch --all --tags
+      - name: Fetch all tags and branches for uxarray
+        run: |
+          git fetch --all --tags
 
       - name: Checkout uxarray-asv
         uses: actions/checkout@v4
@@ -51,6 +36,36 @@ jobs:
           fetch-depth: 0
           ref: main
           path: uxarray-asv
+
+      - name: Setup Miniforge
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: "24.1.2-0"
+          activate-environment: asv
+
+      - name: Get date
+        id: get-date
+        run: echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Cache environment
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CONDA }}/envs
+          key: conda-${{ runner.os }}--${{ runner.arch }}--${{ steps.get-date.outputs.today }}-${{ hashFiles('./ci/asv.yml') }}-${{ env.CACHE_NUMBER }}
+        env:
+          CACHE_NUMBER: 0
+        id: cache
+
+      - name: Update environment
+        run:
+          conda env update -n asv -f ./ci/asv.yml
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      - name: Conda list
+        run: |
+          conda info
+          conda list
 
       - name: Copy existing results
         run: |
@@ -65,8 +80,6 @@ jobs:
           cd benchmarks
           asv machine --machine GH-Actions --os ubuntu-latest --arch x64 --cpu "2-core unknown" --ram 7GB
           asv run v2024.02.0..main --skip-existing --parallel || true
-        working-directory: ${{ env.ASV_DIR }}
-
 
       - name: Commit and push benchmark results
         run: |
